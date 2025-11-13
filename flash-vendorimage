@@ -1,0 +1,49 @@
+#!/bin/bash
+
+VENDOR_IMAGE="/usr/share/vendor-image/vendor.img"
+SLOT_FILE="/var/lib/furios/slot"
+mkdir -p /var/lib/furios/
+
+if [ -f "${VENDOR_IMAGE}" ]; then
+	if [ -f "${SLOT_FILE}" ]; then
+		current_slot=$(<"${SLOT_FILE}")
+		if [ "${current_slot}" == "_a" ] || [ "${current_slot}" == "_b" ]; then
+			echo "Current slot is ${current_slot}"
+		else
+			current_slot="_a"
+                        echo "Current slot is not available, using ${current_slot} as default"
+		fi
+	else
+		current_slot="_a"
+		echo "Current slot is not available, using ${current_slot} as default"
+	fi
+
+	if [ "${current_slot}" == "_a" ]; then
+		flash_slot="_b"
+	else
+		# this should be fine because we check for slots being correct earlier
+		flash_slot="_a"
+	fi
+
+	if [ -e "/dev/mapper/dynpart-vendor${flash_slot}" ]; then
+		filesystem=$(blkid -o value -s TYPE "${VENDOR_IMAGE}")
+		if [ ! "${filesystem}" == "ext4" ]; then
+			echo "Filesystem type is invalid: ${filesystem}"
+			exit 0
+		fi
+
+		echo "Flashing vendor from ${VENDOR_IMAGE} to /dev/mapper/dynpart-vendor${flash_slot}"
+		dd if="${VENDOR_IMAGE}" of="/dev/mapper/dynpart-vendor${flash_slot}" bs=1M status=progress
+
+		# update the slot signature file
+		echo "${flash_slot}" > "${SLOT_FILE}"
+	else
+		echo "vendor dynparts for slot ${flash_slot} does not exist"
+		exit 0
+	fi
+else
+	echo "vendor image is not available at ${VENDOR_IMAGE}"
+	exit 0
+fi
+
+exit 0

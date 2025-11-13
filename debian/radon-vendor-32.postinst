@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+configure() {
+	/usr/libexec/flash-vendorimage
+}
+
+case "$1" in
+	"configure")
+		configure
+		;;
+esac
